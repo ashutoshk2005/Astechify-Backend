@@ -136,7 +136,6 @@ mongoose
   })
   .catch((err) => {
     console.error("❌ MongoDB connection error:", err.message);
-    // Exit so Render knows it failed
     process.exit(1);
   });
 
@@ -167,7 +166,7 @@ app.get("/health", (req, res) => {
   res.json({ status: "ok" });
 });
 
-// Contact form → save lead
+// Save lead (contact form)
 app.post("/api/leads", async (req, res) => {
   try {
     const { name, email, phone, service, message } = req.body;
@@ -194,6 +193,17 @@ app.post("/api/leads", async (req, res) => {
   } catch (err) {
     console.error("Error creating lead:", err);
     res.status(500).json({ error: "Failed to submit lead" });
+  }
+});
+
+// ⬇️ NEW — Fetch leads for Admin Dashboard
+app.get("/api/leads", async (req, res) => {
+  try {
+    const leads = await Lead.find().sort({ createdAt: -1 });
+    res.json(leads);
+  } catch (err) {
+    console.error("Error fetching leads:", err);
+    res.status(500).json({ error: "Failed to fetch leads" });
   }
 });
 
