@@ -174,7 +174,6 @@ app.post("/api/login", (req, res) => {
     const adminPassword = process.env.ADMIN_PASSWORD?.trim();
 
     if (!adminEmail || !adminPassword) {
-      console.error("⚠ Missing env admin credentials");
       return res
         .status(500)
         .json({ error: "Admin credentials not configured" });
@@ -229,6 +228,33 @@ app.get("/api/leads", async (req, res) => {
   } catch (err) {
     console.error("Fetch leads error:", err);
     res.status(500).json({ error: "Failed to fetch leads" });
+  }
+});
+
+// === Update Lead Status ===
+app.put("/api/leads/:id/status", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    if (!["new", "contacted", "closed"].includes(status)) {
+      return res.status(400).json({ error: "Invalid status" });
+    }
+
+    const updatedLead = await Lead.findByIdAndUpdate(
+      id,
+      { status },
+      { new: true }
+    );
+
+    if (!updatedLead) {
+      return res.status(404).json({ error: "Lead not found" });
+    }
+
+    res.json({ message: "Status updated", lead: updatedLead });
+  } catch (err) {
+    console.error("Status update error:", err);
+    res.status(500).json({ error: "Failed to update status" });
   }
 });
 
