@@ -97,8 +97,6 @@
 // });
 
 
-
-// server.js
 require("dotenv").config();
 const express = require("express");
 const mongoose = require("mongoose");
@@ -166,6 +164,34 @@ app.get("/health", (req, res) => {
   res.json({ status: "ok" });
 });
 
+// Simple admin login using env credentials
+app.post("/api/login", (req, res) => {
+  const { email, password } = req.body;
+
+  const adminEmail = process.env.ADMIN_EMAIL;
+  const adminPassword = process.env.ADMIN_PASSWORD;
+
+  if (!adminEmail || !adminPassword) {
+    console.error("ADMIN_EMAIL or ADMIN_PASSWORD not set in env.");
+    return res
+      .status(500)
+      .json({ error: "Admin credentials not configured on server" });
+  }
+
+  if (email === adminEmail && password === adminPassword) {
+    // you can use this token in frontend if needed
+    const fakeToken = "dummy-admin-token";
+
+    return res.json({
+      message: "Login successful",
+      token: fakeToken,
+      email: adminEmail,
+    });
+  }
+
+  return res.status(401).json({ error: "Invalid email or password" });
+});
+
 // Save lead (contact form)
 app.post("/api/leads", async (req, res) => {
   try {
@@ -196,7 +222,7 @@ app.post("/api/leads", async (req, res) => {
   }
 });
 
-// ⬇️ NEW — Fetch leads for Admin Dashboard
+// Fetch all leads for Admin Dashboard
 app.get("/api/leads", async (req, res) => {
   try {
     const leads = await Lead.find().sort({ createdAt: -1 });
