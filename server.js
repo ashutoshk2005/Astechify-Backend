@@ -111,7 +111,6 @@ app.use(helmet());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// CORS: allow all for now (you can restrict later)
 app.use(
   cors({
     origin: true,
@@ -129,15 +128,13 @@ if (!uri) {
 
 mongoose
   .connect(uri)
-  .then(() => {
-    console.log("✅ MongoDB connected");
-  })
+  .then(() => console.log("✅ MongoDB connected"))
   .catch((err) => {
     console.error("❌ MongoDB connection error:", err.message);
     process.exit(1);
   });
 
-// === Lead Model (inline) ===
+// === Lead Model ===
 const leadSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true },
@@ -164,35 +161,40 @@ app.get("/health", (req, res) => {
   res.json({ status: "ok" });
 });
 
-// Simple admin login using env credentials
+// Admin Login Route
 app.post("/api/login", (req, res) => {
-  const { email, password } = req.body;
+  try {
+    const { email, password } = req.body;
 
-  const adminEmail = process.env.ADMIN_EMAIL;
-  const adminPassword = process.env.ADMIN_PASSWORD;
+    if (!email || !password) {
+      return res.status(400).json({ error: "Email & password required" });
+    }
 
-  if (!adminEmail || !adminPassword) {
-    console.error("ADMIN_EMAIL or ADMIN_PASSWORD not set in env.");
-    return res
-      .status(500)
-      .json({ error: "Admin credentials not configured on server" });
+    const adminEmail = process.env.ADMIN_EMAIL?.trim();
+    const adminPassword = process.env.ADMIN_PASSWORD?.trim();
+
+    if (!adminEmail || !adminPassword) {
+      console.error("⚠ Missing env admin credentials");
+      return res
+        .status(500)
+        .json({ error: "Admin credentials not configured" });
+    }
+
+    if (email === adminEmail && password === adminPassword) {
+      return res.json({
+        message: "Login successful",
+        token: "dummy-admin-token",
+      });
+    }
+
+    return res.status(401).json({ error: "Invalid email or password" });
+  } catch (err) {
+    console.error("Login error:", err);
+    res.status(500).json({ error: "Server error" });
   }
-
-  if (email === adminEmail && password === adminPassword) {
-    // you can use this token in frontend if needed
-    const fakeToken = "dummy-admin-token";
-
-    return res.json({
-      message: "Login successful",
-      token: fakeToken,
-      email: adminEmail,
-    });
-  }
-
-  return res.status(401).json({ error: "Invalid email or password" });
 });
 
-// Save lead (contact form)
+// Submit lead (Contact form)
 app.post("/api/leads", async (req, res) => {
   try {
     const { name, email, phone, service, message } = req.body;
@@ -206,29 +208,26 @@ app.post("/api/leads", async (req, res) => {
     const lead = await Lead.create({
       name: name.trim(),
       email: email.trim(),
-      phone: phone?.trim() || "",
+      phone: phone || "",
       service: service || "Not specified",
       message: message.trim(),
       source: "website",
     });
 
-    res.status(201).json({
-      message: "Lead submitted successfully",
-      lead,
-    });
+    res.status(201).json({ message: "Lead submitted", lead });
   } catch (err) {
-    console.error("Error creating lead:", err);
+    console.error("Create lead error:", err);
     res.status(500).json({ error: "Failed to submit lead" });
   }
 });
 
-// Fetch all leads for Admin Dashboard
+// Fetch all leads for Admin
 app.get("/api/leads", async (req, res) => {
   try {
     const leads = await Lead.find().sort({ createdAt: -1 });
     res.json(leads);
   } catch (err) {
-    console.error("Error fetching leads:", err);
+    console.error("Fetch leads error:", err);
     res.status(500).json({ error: "Failed to fetch leads" });
   }
 });
